@@ -1,6 +1,6 @@
 services:
   cloudflare-list-updater:
-    build: .
+    image: ghcr.io/jdrozdnovak/cloudflare-list-updater
     environment:
       - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN}
       - ACCOUNT_ID=${ACCOUNT_ID}
@@ -9,3 +9,4 @@ services:
       - CRON_SCHEDULE=${CRON_SCHEDULE}
     volumes:
       - ./log:/var/log
+    restart: always

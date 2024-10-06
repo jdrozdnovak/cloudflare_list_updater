@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y cron && pip install requests
 COPY . .
 
 # Create the log file to be able to run tail
-RUN touch /var/log/cron.log
+RUN touch /var/log/cron.log && chmod 0644 /var/log/cron.log
 
 # Set environment variables (can be overridden by Docker Compose)
 ENV CLOUDFLARE_API_TOKEN=""
