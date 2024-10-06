@@ -1,0 +1,73 @@
+import time
+import requests
+import os
+
+# Cloudflare API details
+CLOUDFLARE_API_TOKEN = os.getenv("CLOUDFLARE_API_TOKEN")
+ACCOUNT_ID = os.getenv("ACCOUNT_ID")
+LIST_ID = os.getenv("LIST_ID")
+COMMENT = os.getenv("COMMENT")
+
+# API endpoints
+CLOUDFLARE_LIST_API_URL = f"https://api.cloudflare.com/client/v4/accounts/{ACCOUNT_ID}/rules/lists/{LIST_ID}/items"
+PUBLIC_IP_API = "https://ifconfig.me"
+
+headers = {
+    "Authorization": f"Bearer {CLOUDFLARE_API_TOKEN}",
+    "Content-Type": "application/json",
+}
+
+def get_public_ip() -> str:
+    try:
+        response = requests.get(PUBLIC_IP_API)
+        response.raise_for_status()
+        return response.text.strip()
+    except requests.RequestException as e:
+        print(f"Error getting public IP: {e}")
+        return None
+
+def update_cloudflare_list(ip: str) -> None:
+    try:
+        # Get the current list entries from Cloudflare
+        response = requests.get(CLOUDFLARE_LIST_API_URL, headers=headers)
+        response.raise_for_status()
+        items = response.json().get('result', [])
+
+        # Find the entry to update (based on comment)
+        for item in items:
+            if item['comment'] == COMMENT:
+                item_id = item['id']
+
+                # Delete the old entry
+                delete_url = f"{CLOUDFLARE_LIST_API_URL}/{item_id}"
+                delete_response = requests.delete(delete_url, headers=headers)
+                delete_response.raise_for_status()
+                print(f"Deleted old entry with IP: {item['content']}")
+
+                # Add the new entry with the updated IP
+                add_payload = [{
+                    "content": ip,
+                    "comment": COMMENT
+                }]
+                add_response = requests.post(CLOUDFLARE_LIST_API_URL, headers=headers, json=add_payload)
+                add_response.raise_for_status()
+                print(f"Added new entry with IP: {ip}")
+                return
+
+    except requests.RequestException as e:
+        print(f"Error updating Cloudflare list: {e}")
+
+def main():
+    last_ip = None
+    while True:
+        current_ip = get_public_ip()
+        if current_ip and current_ip != last_ip:
+            print(f"IP changed from {last_ip} to {current_ip}, updating Cloudflare...")
+            update_cloudflare_list(current_ip)
+            last_ip = current_ip
+        else:
+            print(f"IP has not changed: {current_ip}")
+        time.sleep(300)  # Sleep for 5 minutes
+
+if __name__ == "__main__":
+    main()

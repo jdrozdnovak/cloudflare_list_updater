@@ -1,0 +1,11 @@
+services:
+  cloudflare-list-updater:
+    build: .
+    environment:
+      - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN}
+      - ACCOUNT_ID=${ACCOUNT_ID}
+      - LIST_ID=${LIST_ID}
+      - COMMENT=${COMMENT}
+      - CRON_SCHEDULE=${CRON_SCHEDULE}
+    volumes:
+      - ./log:/var/log
