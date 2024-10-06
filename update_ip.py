@@ -8,7 +8,10 @@ logging.basicConfig(level=logging_level, format='%(asctime)s - %(levelname)s - %
 logger = logging.getLogger(__name__)
 
 class CloudflareUpdater:
-    def __init__(self):
+    def __init__(self, env_file="/etc/environment"):
+        # Load environment variables from a file
+        self.load_env_from_file(env_file)
+
         # Cloudflare API details
         self.cloudflare_api_email = os.getenv("CLOUDFLARE_API_EMAIL")
         self.cloudflare_api_key = os.getenv("CLOUDFLARE_API_KEY")
@@ -27,6 +30,17 @@ class CloudflareUpdater:
             "X-Auth-Key": self.cloudflare_api_key,
             "Content-Type": "application/json",
         }
+
+    def load_env_from_file(self, env_file):
+        """Load environment variables from a file into the OS environment."""
+        try:
+            with open(env_file, "r") as file:
+                for line in file:
+                    key, value = line.strip().split("=", 1)
+                    os.environ[key] = value
+                    logger.debug(f"Loaded environment variable {key} from {env_file}")
+        except Exception as e:
+            logger.error(f"Failed to load environment variables from {env_file}: {e}")
 
     def log_response(self, response):
         """Logs detailed information about the response if debug mode is enabled."""
@@ -86,7 +100,7 @@ class CloudflareUpdater:
 
             # Check if the public IP is already in the list
             for item in items:
-                if item['ip'] == ip:
+                if item['content'] == ip:
                     logger.info(f"Public IP {ip} is already in the list, no update necessary.")
                     return
 
