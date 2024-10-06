@@ -1,4 +1,3 @@
-import time
 import requests
 import os
 
@@ -41,7 +40,7 @@ def update_cloudflare_list(ip: str) -> None:
             if item['comment'] == COMMENT:
                 item_id = item['id']
 
-                # Delete the old entry
+                # Delete the old entry using the DELETE method
                 delete_url = f"{CLOUDFLARE_LIST_API_URL}/{item_id}"
                 delete_response = requests.delete(delete_url, headers=headers)
                 delete_response.raise_for_status()
@@ -61,16 +60,12 @@ def update_cloudflare_list(ip: str) -> None:
         print(f"Error updating Cloudflare list: {e}")
 
 def main():
-    last_ip = None
-    while True:
-        current_ip = get_public_ip()
-        if current_ip and current_ip != last_ip:
-            print(f"IP changed from {last_ip} to {current_ip}, updating Cloudflare...")
-            update_cloudflare_list(current_ip)
-            last_ip = current_ip
-        else:
-            print(f"IP has not changed: {current_ip}")
-        time.sleep(300)  # Sleep for 5 minutes
+    current_ip = get_public_ip()
+    if current_ip:
+        print(f"Current IP: {current_ip}, updating Cloudflare...")
+        update_cloudflare_list(current_ip)
+    else:
+        print("Failed to retrieve the public IP.")
 
 if __name__ == "__main__":
     main()
