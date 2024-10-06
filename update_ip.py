@@ -75,7 +75,7 @@ class CloudflareUpdater:
             logger.error(f"Error adding new entry to Cloudflare list: {e}")
 
     def update_cloudflare_list(self, ip: str) -> None:
-        """Updates the Cloudflare list with the new IP, replacing the old one."""
+        """Updates the Cloudflare list with the new IP, replacing the old one if necessary."""
         try:
             # Get the current list entries from Cloudflare
             response = requests.get(self.cloudflare_list_api_url, headers=self.headers)
@@ -84,21 +84,25 @@ class CloudflareUpdater:
             items = response.json().get('result', [])
             logger.info("Fetched current list from Cloudflare.")
 
+            # Check if the public IP is already in the list
+            for item in items:
+                if item['ip'] == ip:
+                    logger.info(f"Public IP {ip} is already in the list, no update necessary.")
+                    return
+
+            # If the IP is not found in the list, proceed with updating
+            logger.info(f"Public IP {ip} not found in the list. Proceeding with update.")
+
             # Find the entry to update (based on comment)
             for item in items:
                 if item['comment'] == self.comment:
                     item_id = item['id']
                     # Delete the old entry using the item ID
                     self.delete_old_entry(item_id)
+                    break
 
-                    # Add the new entry with the updated IP
-                    self.add_new_entry(ip)
-                    return
-                else:
-                    self.add_new_entry(ip)
-                    return
-
-            logger.warning(f"No entry found with the comment: {self.comment}")
+            # Add the new entry with the updated IP
+            self.add_new_entry(ip)
         except requests.RequestException as e:
             logger.error(f"Error updating Cloudflare list: {e}")
 
