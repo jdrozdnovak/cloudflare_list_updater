@@ -1,71 +1,117 @@
 import requests
 import os
+import logging
 
-# Cloudflare API details
-CLOUDFLARE_API_EMAIL = os.getenv("CLOUDFLARE_API_EMAIL")
-CLOUDFLARE_API_KEY = os.getenv("CLOUDFLARE_API_KEY")
-ACCOUNT_ID = os.getenv("ACCOUNT_ID")
-LIST_ID = os.getenv("LIST_ID")
-COMMENT = os.getenv("COMMENT")
+# Set up logging
+logging_level = logging.DEBUG if os.getenv("DEBUG", "false").lower() == "true" else logging.INFO
+logging.basicConfig(level=logging_level, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
-# API endpoints
-CLOUDFLARE_LIST_API_URL = f"https://api.cloudflare.com/client/v4/accounts/{ACCOUNT_ID}/rules/lists/{LIST_ID}/items"
-PUBLIC_IP_API = "https://ifconfig.me"
+class CloudflareUpdater:
+    def __init__(self):
+        # Cloudflare API details
+        self.cloudflare_api_email = os.getenv("CLOUDFLARE_API_EMAIL")
+        self.cloudflare_api_key = os.getenv("CLOUDFLARE_API_KEY")
+        self.account_id = os.getenv("ACCOUNT_ID")
+        self.list_id = os.getenv("LIST_ID")
+        self.comment = os.getenv("COMMENT")
+        self.public_ip_api = "https://ifconfig.me"
+        self.debug = os.getenv("DEBUG", "false").lower() == "true"
 
-# Cloudflare authentication headers using X-Auth-Email and X-Auth-Key
-headers = {
-    "X-Auth-Email": CLOUDFLARE_API_EMAIL,
-    "X-Auth-Key": CLOUDFLARE_API_KEY,
-    "Content-Type": "application/json",
-}
+        # Cloudflare API endpoints
+        self.cloudflare_list_api_url = f"https://api.cloudflare.com/client/v4/accounts/{self.account_id}/rules/lists/{self.list_id}/items"
 
-def get_public_ip() -> str:
-    try:
-        response = requests.get(PUBLIC_IP_API)
-        response.raise_for_status()
-        return response.text.strip()
-    except requests.RequestException as e:
-        print(f"Error getting public IP: {e}")
-        return None
+        # Cloudflare authentication headers using X-Auth-Email and X-Auth-Key
+        self.headers = {
+            "X-Auth-Email": self.cloudflare_api_email,
+            "X-Auth-Key": self.cloudflare_api_key,
+            "Content-Type": "application/json",
+        }
 
-def update_cloudflare_list(ip: str) -> None:
-    try:
-        # Get the current list entries from Cloudflare
-        response = requests.get(CLOUDFLARE_LIST_API_URL, headers=headers)
-        response.raise_for_status()
-        items = response.json().get('result', [])
+    def log_response(self, response):
+        """Logs detailed information about the response if debug mode is enabled."""
+        if self.debug:
+            logger.debug(f"Status Code: {response.status_code}")
+            logger.debug(f"Response Body: {response.text}")
 
-        # Find the entry to update (based on comment)
-        for item in items:
-            if item['comment'] == COMMENT:
-                item_id = item['id']
+    def get_public_ip(self) -> str:
+        """Fetches the current public IP from an external API."""
+        try:
+            response = requests.get(self.public_ip_api)
+            self.log_response(response)
+            response.raise_for_status()
+            ip = response.text.strip()
+            logger.info(f"Fetched public IP: {ip}")
+            return ip
+        except requests.RequestException as e:
+            logger.error(f"Error getting public IP: {e}")
+            return None
 
-                # Delete the old entry using the DELETE method
-                delete_url = f"{CLOUDFLARE_LIST_API_URL}/{item_id}"
-                delete_response = requests.delete(delete_url, headers=headers)
-                delete_response.raise_for_status()
-                print(f"Deleted old entry with IP: {item['content']}")
+    def delete_old_entry(self, item_id: str):
+        """Deletes the old entry from the Cloudflare list using the item ID."""
+        try:
+            delete_payload = {
+                "items": [{"id": item_id}]
+            }
+            response = requests.delete(self.cloudflare_list_api_url, headers=self.headers, json=delete_payload)
+            self.log_response(response)
+            response.raise_for_status()
+            logger.info(f"Deleted item with ID: {item_id}")
+        except requests.RequestException as e:
+            logger.error(f"Error deleting item from Cloudflare list: {e}")
 
-                # Add the new entry with the updated IP
-                add_payload = [{
-                    "content": ip,
-                    "comment": COMMENT
-                }]
-                add_response = requests.post(CLOUDFLARE_LIST_API_URL, headers=headers, json=add_payload)
-                add_response.raise_for_status()
-                print(f"Added new entry with IP: {ip}")
-                return
+    def add_new_entry(self, ip: str):
+        """Adds the new IP entry to the Cloudflare list."""
+        try:
+            add_payload = [{
+                "ip": ip,
+                "comment": self.comment
+            }]
+            response = requests.post(self.cloudflare_list_api_url, headers=self.headers, json=add_payload)
+            self.log_response(response)
+            response.raise_for_status()
+            logger.info(f"Added new entry with IP: {ip}")
+        except requests.RequestException as e:
+            logger.error(f"Error adding new entry to Cloudflare list: {e}")
 
-    except requests.RequestException as e:
-        print(f"Error updating Cloudflare list: {e}")
+    def update_cloudflare_list(self, ip: str) -> None:
+        """Updates the Cloudflare list with the new IP, replacing the old one."""
+        try:
+            # Get the current list entries from Cloudflare
+            response = requests.get(self.cloudflare_list_api_url, headers=self.headers)
+            self.log_response(response)
+            response.raise_for_status()
+            items = response.json().get('result', [])
+            logger.info("Fetched current list from Cloudflare.")
 
-def main():
-    current_ip = get_public_ip()
-    if current_ip:
-        print(f"Current IP: {current_ip}, updating Cloudflare...")
-        update_cloudflare_list(current_ip)
-    else:
-        print("Failed to retrieve the public IP.")
+            # Find the entry to update (based on comment)
+            for item in items:
+                if item['comment'] == self.comment:
+                    item_id = item['id']
+                    # Delete the old entry using the item ID
+                    self.delete_old_entry(item_id)
+
+                    # Add the new entry with the updated IP
+                    self.add_new_entry(ip)
+                    return
+                else:
+                    self.add_new_entry(ip)
+                    return
+
+            logger.warning(f"No entry found with the comment: {self.comment}")
+        except requests.RequestException as e:
+            logger.error(f"Error updating Cloudflare list: {e}")
+
+    def run(self):
+        """Main method to fetch IP and update Cloudflare."""
+        current_ip = self.get_public_ip()
+        if current_ip:
+            logger.info(f"Current IP: {current_ip}, updating Cloudflare...")
+            self.update_cloudflare_list(current_ip)
+        else:
+            logger.error("Failed to retrieve the public IP.")
+
 
 if __name__ == "__main__":
-    main()
+    updater = CloudflareUpdater()
+    updater.run()
