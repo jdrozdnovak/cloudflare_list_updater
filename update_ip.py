@@ -4,7 +4,7 @@ import logging
 
 # Set up logging
 logging_level = logging.DEBUG if os.getenv("DEBUG", "false").lower() == "true" else logging.INFO
-logging.basicConfig(level=logging_level, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging_level, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 class CloudflareUpdater:
@@ -95,12 +95,12 @@ class CloudflareUpdater:
             response = requests.get(self.cloudflare_list_api_url, headers=self.headers)
             self.log_response(response)
             response.raise_for_status()
-            items = response.json().get('result', [])
+            items = response.json().get("result", [])
             logger.info("Fetched current list from Cloudflare.")
 
             # Check if the public IP is already in the list
             for item in items:
-                if item['content'] == ip:
+                if item["ip"] == ip:
                     logger.info(f"Public IP {ip} is already in the list, no update necessary.")
                     return
 
@@ -109,8 +109,8 @@ class CloudflareUpdater:
 
             # Find the entry to update (based on comment)
             for item in items:
-                if item['comment'] == self.comment:
-                    item_id = item['id']
+                if item["comment"] == self.comment:
+                    item_id = item["id"]
                     # Delete the old entry using the item ID
                     self.delete_old_entry(item_id)
                     break
