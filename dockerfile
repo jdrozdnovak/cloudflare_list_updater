@@ -14,7 +14,8 @@ COPY . .
 RUN touch /var/log/cron.log && chmod 0644 /var/log/cron.log
 
 # Set environment variables (can be overridden by Docker Compose)
-ENV CLOUDFLARE_API_TOKEN=""
+ENV CLOUDFLARE_API_EMAIL=""
+ENV CLOUDFLARE_API_KEY=""
 ENV ACCOUNT_ID=""
 ENV LIST_ID=""
 ENV COMMENT=""

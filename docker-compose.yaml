@@ -2,11 +2,10 @@ services:
   cloudflare-list-updater:
     image: ghcr.io/jdrozdnovak/cloudflare-list-updater
     environment:
-      - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN}
+      - CLOUDFLARE_API_EMAIL=${CLOUDFLARE_API_EMAIL}
+      - CLOUDFLARE_API_KEY=${CLOUDFLARE_API_KEY}
       - ACCOUNT_ID=${ACCOUNT_ID}
       - LIST_ID=${LIST_ID}
       - COMMENT=${COMMENT}
       - CRON_SCHEDULE=${CRON_SCHEDULE}
-    volumes:
-      - ./log:/var/log
     restart: always

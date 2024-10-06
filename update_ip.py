@@ -3,7 +3,8 @@ import requests
 import os
 
 # Cloudflare API details
-CLOUDFLARE_API_TOKEN = os.getenv("CLOUDFLARE_API_TOKEN")
+CLOUDFLARE_API_EMAIL = os.getenv("CLOUDFLARE_API_EMAIL")
+CLOUDFLARE_API_KEY = os.getenv("CLOUDFLARE_API_KEY")
 ACCOUNT_ID = os.getenv("ACCOUNT_ID")
 LIST_ID = os.getenv("LIST_ID")
 COMMENT = os.getenv("COMMENT")
@@ -12,8 +13,10 @@ COMMENT = os.getenv("COMMENT")
 CLOUDFLARE_LIST_API_URL = f"https://api.cloudflare.com/client/v4/accounts/{ACCOUNT_ID}/rules/lists/{LIST_ID}/items"
 PUBLIC_IP_API = "https://ifconfig.me"
 
+# Cloudflare authentication headers using X-Auth-Email and X-Auth-Key
 headers = {
-    "Authorization": f"Bearer {CLOUDFLARE_API_TOKEN}",
+    "X-Auth-Email": CLOUDFLARE_API_EMAIL,
+    "X-Auth-Key": CLOUDFLARE_API_KEY,
     "Content-Type": "application/json",
 }
 
